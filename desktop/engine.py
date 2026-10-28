@@ -33,6 +33,14 @@ def official(frame):
     return parsed.scheme + '://' + parsed.netloc in ORIGINS
 
 
+def navigation_source():
+    # Playwright invokes a function returned by evaluate(). A bare script ending
+    # in desktopAction's assignment returns that function and calls it with null.
+    # Execute declarations inside an explicit initializer returning a boolean.
+    source = (ROOT / 'desktop' / 'navigation.js').read_text(encoding='utf-8')
+    return '() => {\n' + source + '\nreturn true;\n}'
+
+
 def register_month(config, username, password, stop: threading.Event, log):
     """Own one ephemeral Chrome session. No credentials, cookies, traces or HAR saved."""
     planned = lessons(config)
@@ -108,7 +116,7 @@ def register_month(config, username, password, stop: threading.Event, log):
                             if ready and {'escola', 'turma'}.issubset(clicked):
                                 registration = frame
                                 break
-                        frame.evaluate((ROOT / 'desktop' / 'navigation.js').read_text(encoding='utf-8'))
+                        frame.evaluate(navigation_source())
                         if frame.evaluate('() => desktopProfileScreen()'):
                             if profile_seen is None:
                                 profile_seen = time.monotonic()

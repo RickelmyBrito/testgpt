@@ -2,7 +2,7 @@
 
 Programa com janela própria que abre o Google Chrome, faz login no portal da SEDUC-PI e tenta registrar as aulas do mês automaticamente. **Não requer extensão do Chrome.**
 
-A versão atual aparece no título da janela: **3.1.0**. Após atualizar o ZIP, abra `Abrir Programa.cmd` da nova pasta; um executável ou atalho antigo não é atualizado pela extração do código-fonte.
+A versão atual aparece no título da janela: **3.1.1**. Após atualizar o ZIP, abra `Abrir Programa.cmd` da nova pasta; um executável ou atalho antigo não é atualizado pela extração do código-fonte.
 
 ## Abrir no Windows
 
@@ -67,8 +67,11 @@ python -m unittest discover -s tests -p test_desktop.py
 node tests/wizard.test.js
 node tests/confirmation.test.js
 node tests/browser.test.js
+.venv/bin/python -m unittest discover -s tests -p test_playwright_navigation.py
 ```
 
-O último teste requer Chromium em `/usr/bin/chromium` ou `CHROMIUM_PATH`. Usa CDP por pipe e página sintética em memória, sem navegação externa nem scripts dos anexos. Pode requerer permissão de execução fora do sandbox. A interface gráfica Windows não é validada por esse teste Linux.
+O teste `tests/browser.test.js` requer Chromium em `/usr/bin/chromium` ou `CHROMIUM_PATH`. Usa CDP por pipe e página sintética em memória, sem navegação externa nem scripts dos anexos. Pode requerer permissão de execução fora do sandbox. A interface gráfica Windows não é validada por esse teste Linux.
+
+O teste `test_playwright_navigation.py` usa Playwright 1.55.0 (instalado pelo `requirements-desktop.txt`) e Chrome no Windows, ou Chromium no Linux. Executa a inicialização JavaScript por `Frame.evaluate`, a seleção do perfil e o caminho escola/turma em páginas locais, incluindo um iframe. Ele cobre a chamada real que falhava antes de identificar o perfil; os testes de DOM isolados não detectavam esse erro. No Windows, use `.venv\\Scripts\\python` no lugar de `.venv/bin/python`.
 
 Para compilar no Windows: instale `pyinstaller==6.11.1` além de `requirements-desktop.txt` e execute `python desktop/build_windows.py`. O workflow também executa `RegistroDeAulas.exe --self-test` para validar Tcl, recursos embarcados e Chrome em uma página local antes de disponibilizar o artefato.
