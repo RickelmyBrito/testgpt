@@ -79,3 +79,7 @@ O teste `tests/browser.test.js` requer Chromium em `/usr/bin/chromium` ou `CHROM
 O teste `test_playwright_navigation.py` usa Playwright 1.55.0 (instalado pelo `requirements-desktop.txt`) e Chrome no Windows, ou Chromium no Linux. Executa a inicialização JavaScript por `Frame.evaluate`, a seleção do perfil e o caminho escola/turma em páginas locais, incluindo um iframe. Ele cobre a chamada real que falhava antes de identificar o perfil; os testes de DOM isolados não detectavam esse erro. No Windows, use `.venv\\Scripts\\python` no lugar de `.venv/bin/python`.
 
 Para compilar no Windows: instale `pyinstaller==6.11.1` além de `requirements-desktop.txt` e execute `python desktop/build_windows.py`. O workflow também executa `RegistroDeAulas.exe --self-test` para validar Tcl, recursos embarcados e Chrome em uma página local antes de disponibilizar o artefato.
+
+## Programa do Ceará
+
+Para preencher o **Plano de Ensino da SEDUC-CE** com alinhamento PDF, consulte [CEARA.md](CEARA.md). Abra **Abrir Programa Ceara.cmd**; o programa do Piauí continua independente.
