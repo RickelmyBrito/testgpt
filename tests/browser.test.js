@@ -10,7 +10,7 @@ test('preenche controles personalizados em Chromium com a estrutura real sanitiz
   const root=path.resolve(__dirname,'..');
   const fixture=fs.readFileSync(path.join(__dirname,'fixtures/registro-conteudo.html'),'utf8');
   const script=name=>'<script>'+fs.readFileSync(path.join(root,name),'utf8')+'</script>';
-  const html='<!doctype html><meta charset="utf-8"><body><main>'+fixture+'</main><pre id="report"></pre><script>window.addEventListener("error",e=>{document.getElementById("report").textContent="FAIL "+e.message;});const storage=new Map();Object.defineProperty(window,"sessionStorage",{value:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)}});if(!crypto.randomUUID)crypto.randomUUID=()=>String(Math.random());</script>'+script('portal.js')+script('fill.js')+script('wizard.js')+script('batch.js')+`<script>
+  const html='<!doctype html><meta charset="utf-8"><body><main>'+fixture+'</main><pre id="report"></pre><script>window.addEventListener("error",e=>{document.getElementById("report").textContent="FAIL "+e.message;});const storage=new Map();Object.defineProperty(window,"sessionStorage",{value:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)}});if(!crypto.randomUUID)crypto.randomUUID=()=>String(Math.random());</script>'+script('portal.js')+script('fill.js')+script('wizard.js')+script('batch.js')+script('desktop/navigation.js')+`<script>
   const outcomes=[];
   const assert=(ok,message)=>{if(!ok)throw Error(message);};
   const p=PortalAulas;
@@ -114,6 +114,12 @@ test('preenche controles personalizados em Chromium com a estrutura real sanitiz
     for(let i=0;i<100 && sessionStorage.getItem('assistente-aulas-lote');i++){await LoteAulas.run();await new Promise(r=>setTimeout(r,20));}
     assert((sessionStorage.getItem('assistente-aulas-status')||'').startsWith('Mês concluído'),'consulta percorreu páginas: '+sessionStorage.getItem('assistente-aulas-status'));
     assert(adds===1,'aula localizada em outra página não é reenviada');outcomes.push('paginação');
+    document.querySelector('main').innerHTML='<section><h3>Turma Exemplo</h3><p>Física</p><a>Registro de aulas</a></section><section><h3>Turma Exemplo</h3><p>Matemática</p><a id="math">Registro de aulas</a></section><section><h3>Escola Exemplo</h3><button id="school">Abrir</button></section>';
+    assert(desktopAction({title:'Turma Exemplo',action:'Registro de aulas',discipline:'Matemática'})===document.getElementById('math'),'navegação distingue disciplina na mesma turma');
+    assert(desktopAction({title:'Escola Exemplo',action:'Abrir'})===document.getElementById('school'),'navegação localiza escola');
+    assert(desktopAction({title:'Turma Exemplo',action:'Registro de aulas',discipline:'Biologia'})===null,'não abre disciplina inexistente');
+    document.querySelector('main').insertAdjacentHTML('beforeend','<section><h3>Turma Exemplo</h3><p>Matemática</p><a>Registro de aulas</a></section>');
+    assert(desktopAction({title:'Turma Exemplo',action:'Registro de aulas',discipline:'Matemática'})===null,'não escolhe cartão ambíguo');outcomes.push('escola e turma por disciplina');
     document.getElementById('report').textContent='PASS '+outcomes.join(', ');
   })().catch(e=>{document.getElementById('report').textContent='FAIL '+e.message;});
   </script>`;

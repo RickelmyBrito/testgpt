@@ -1,50 +1,72 @@
-# Assistente de Registro de Aulas
+# Programa de Registro de Aulas — Windows
 
-Extensão Chrome Manifest V3 para preparar registros no iSEDUC da SEDUC-PI. Não usa servidor próprio nem recebe senhas fora do navegador do usuário.
+Programa com janela própria que abre o Google Chrome, faz login no portal da SEDUC-PI e tenta registrar as aulas do mês automaticamente. **Não requer extensão do Chrome.**
 
-## Uso no Windows
+## Abrir no Windows
 
-1. Extraia o pacote para uma pasta permanente.
-2. Em `chrome://extensions`, ative **Modo do desenvolvedor** e use **Carregar sem compactação** para selecionar a pasta com `manifest.json`. Após atualizar os arquivos, clique em **Recarregar** na extensão e atualize a aba do portal.
-3. Abra `https://portal.seduc.pi.gov.br/`. Na extensão, informe usuário e senha em **Entrar no portal**. As credenciais são preenchidas na página oficial e não são armazenadas pela extensão. CAPTCHA e verificações adicionais são concluídos no navegador.
-4. A seleção do perfil Professor(a) é tentada após o login solicitado pela extensão. Abra a escola e **Registro de aulas** da turma/disciplina. Essas escolhas ainda são manuais.
-5. Informe turma exatamente como aparece no portal, disciplina, mês/ano, dias da semana, horários e dias sem aula. Para vários horários no mesmo dia, separe com `;`. Os dias sem aula podem ser números, como `7, 12, 21`, ou datas completas do mesmo mês.
-6. Clique em **Preparar lista de aulas**, abra **Adicionar aula** no portal e use **Preencher e salvar** na aula desejada.
-7. Para executar o mês sem iniciar cada aula, use **Registrar mês automaticamente** na lista da turma com filtros limpos, ou num formulário novo completamente vazio. A rotina consulta as páginas reconhecidas da tabela e compara o total com os contadores; se a lista estiver parcial, interrompe antes de enviar. Pula aulas já registradas e processa as demais sequencialmente, aguardando a comprovação de cada uma.
-8. O programa tenta preencher Aula Normal, data, horário, conteúdo e metodologia e confirmar o envio. Em seguida tenta avançar por Plano de aula, Frequência e Recursos didáticos e clicar em Salvar e Finalizar em Atividade. Não adiciona planos, recursos ou atividades.
-9. Use **Consultar resultado** para verificar o andamento. O registro só é identificado como salvo quando uma linha da tabela corresponde a data, horário, turma, disciplina e situação. Aguardando confirmação significa enviado, pendente de confirmação da escola.
+### Executável
 
-**Salvar é automático ao iniciar uma aula.** Não use registros reais para ensaios sem intenção de enviá-los. O lote não reenvia automaticamente uma aula com resultado incerto, rejeitado ou duplicado. Na frequência a rotina não altera os controles, mas pode gravar os valores já exibidos, conforme autorizado pelo usuário. Notas não são acessadas. Competências, habilidades e objetivos ficam intactos.
+A compilação Windows está configurada em [Actions → Programa Windows](https://github.com/RickelmyBrito/testgpt/actions/workflows/windows-program.yml). Quando uma execução terminar com sucesso, baixe o artefato **RegistroDeAulas-Windows**, extraia e abra **RegistroDeAulas.exe**. O executável inclui Python e Playwright; o Google Chrome deve estar instalado no computador.
 
-**Parar avanço automático** cancela as próximas ações. Solicitações já enviadas não são desfeitas. Se houver interrupção, confira a lista no portal antes de repetir: um conteúdo pode ter sido gravado antes de o fluxo terminar.
+O repositório contém a configuração de compilação, não um executável previamente validado neste ambiente Linux. Uma execução verde do workflow comprova a compilação e o teste local do executável no Windows; não comprova o acesso ao diário real.
 
-## Compatibilidade e limites
+### Código-fonte (alternativa imediata)
 
-A versão 2.0 usa o HTML de conteúdo fornecido pelo usuário: rótulos sem associação `for`, botões Radix com `role=combobox` e calendário em popover. Ela localiza o quadro em `seduc-academico-prod.seduc.pi.gov.br`, em vez de procurar os campos na página externa do portal. Permissões são limitadas aos dois domínios HTTPS oficiais.
+1. Baixe [o ZIP do projeto](https://github.com/RickelmyBrito/testgpt/archive/refs/heads/main.zip) e extraia a pasta.
+2. Tenha **Google Chrome** e **Python 3.12 para Windows** instalados. O instalador oficial do Python deve incluir o Python Launcher (`py`).
+3. Dê dois cliques em **Abrir Programa.cmd**. Na primeira abertura, ele prepara uma pasta `.venv` e instala Playwright com verificação TLS normal. Nas próximas, abre a interface.
 
-A seleção de listas segue `aria-controls` e opções `role=option`; IDs temporários não são fixados. O calendário suporta cabeçalhos DayPicker em português/inglês, navegação mês a mês e dias habilitados. O HTML recebido não inclui o calendário aberto: sua estrutura interna ainda depende de validação no portal. Valores são conferidos antes de enviar. Se um controle não for reconhecido, a execução para.
+## Como usar
 
-A rotina de etapas identifica o breadcrumb e confirma apenas o diálogo conhecido após o próprio clique. Há tempo limite por etapa. Não declara sucesso somente pelo aumento de um contador ou pelo clique final. No envio individual, uma linha oculta por filtros ou em outra página não confirma o resultado. No lote, a rotina consulta a paginação reconhecida; filtros que escondem registros impedem o início.
+Na janela do programa, informe:
 
-**A escolha da escola e da turma após o login continua manual.** O lote mensal funciona a partir da lista da turma ou de um formulário novo vazio. A paginação é suportada quando os botões expõem nomes como Próxima página/Página anterior ou Next page/Previous page. Sem comprovação da consulta completa, a rotina interrompe. Mantenha a aba aberta e não a utilize para outras aulas enquanto o lote estiver ativo. A integração autenticada completa não foi testada; testes locais não comprovam gravação no portal.
+- Usuário e senha do portal (somente no seu computador).
+- Nome completo da escola, turma e disciplina, como aparecem no portal.
+- Mês e ano no formato `AAAA-MM`.
+- Dias da semana e horários completos. Para várias aulas no mesmo dia, separe os horários por ponto e vírgula: `08:00 - 09:00; 10:00 - 11:00`.
+- Dias sem aula no mês, por exemplo `7, 12, 21`.
+- Conteúdo e metodologia correspondentes às aulas efetivamente realizadas.
 
-## Dados locais
+Clique em **Entrar e registrar mês**. O programa abre uma janela separada do Chrome, envia o login, seleciona Professor(a), procura a escola e o cartão da turma/disciplina e inicia o lote. Se aparecer CAPTCHA ou código de verificação, conclua essa etapa no Chrome; o programa não contorna essas verificações.
 
-A grade e os textos ficam no armazenamento local da extensão. Metadados do fluxo e seu resultado ficam no armazenamento de sessão da aba acadêmica. Nenhum dado é enviado a serviços próprios. Credenciais não são persistidas. Para remover a grade, desinstale a extensão; para encerrar a sessão no portal, use a opção Sair do próprio sistema.
+O lote consulta a lista existente e a paginação reconhecida, exige totais completos e pula aulas já registradas. Para cada aula restante, tenta selecionar Aula Normal, data e horário, preencher os textos, confirmar o envio, avançar por Plano de aula, Frequência e Recursos didáticos e finalizar em Atividade. Aguarda localizar na lista o registro correspondente antes de iniciar outro.
 
-## Desenvolvimento e validação
+Não edita competências, habilidades, objetivos ou notas. Na frequência, clica em Salvar e Avançar sem alterar os controles: **isso pode gravar os valores já exibidos**, conforme autorizado pelo usuário. Não adiciona recursos ou atividades. Aguardando confirmação significa enviado, pendente de confirmação da escola.
 
-Use o checkout existente. As tarefas em nuvem já são isoladas: não crie worktrees sem solicitação. Não há instalação de dependências ou build.
+Use **Parar e fechar Chrome** para interromper. Ações já enviadas não são desfeitas. Não utilize essa janela para outras operações enquanto o lote estiver ativo. Após concluir ou detectar uma falha, a janela fica aberta para conferência até você fechá-la ou clicar em Parar.
 
-Execute os testes com Node.js 24:
+## Credenciais e dados
+
+Usuário e senha são usados para preencher o formulário HTTPS oficial e não são gravados pelo programa em arquivos ou configurações. A senha é retirada da interface ao iniciar. O navegador usa um contexto novo, sem reutilizar seu perfil pessoal; a sessão fica em memória durante a execução. O programa não salva cookies, capturas de tela, HAR ou traces. Mensagens de erro não incluem os logs brutos de preenchimento do Playwright. Serviços oficiais podem manter seus próprios registros de acesso.
+
+Os metadados do lote ficam no armazenamento de sessão da página acadêmica durante a execução. O programa não acessa dados de notas nem exporta dados de alunos.
+
+## Limites conhecidos
+
+O preenchimento usa a estrutura real de conteúdo fornecida pelo usuário: React/Radix em um iframe de `seduc-academico-prod.seduc.pi.gov.br`, dentro de `portal.seduc.pi.gov.br`. A navegação procura ações únicas pelos nomes exatos de escola, turma e disciplina. Controles ambíguos, filtros que escondem aulas, paginação não reconhecida ou resultados incertos interrompem o lote sem reenvio automático. Confira os registros antes de reiniciar após uma falha.
+
+**A integração autenticada completa ainda precisa ser validada no portal.** Os testes locais usam a estrutura sanitizada dos campos e eventos simulados para menus, calendário, cartões e salvamento. Não comprovam uma gravação real. O HTML recebido não incluiu o calendário aberto nem os cartões completos; mudanças nesses componentes podem exigir adaptação.
+
+## Desenvolvimento
+
+Use o checkout existente: as tarefas em nuvem são isoladas; não crie worktrees sem solicitação. Python 3.12 e Node.js 24 são usados nos testes. Para executar a interface pelo código-fonte:
 
 ```sh
-node tests/schedule.test.js
-node tests/login.test.js
-node tests/profile.test.js
-node tests/confirmation.test.js
+python -m venv .venv
+# Windows:
+.venv\Scripts\python -m pip install -r requirements-desktop.txt
+.venv\Scripts\python programa.py
+```
+
+Testes:
+
+```sh
+python -m unittest discover -s tests -p test_desktop.py
 node tests/wizard.test.js
+node tests/confirmation.test.js
 node tests/browser.test.js
 ```
 
-O último teste usa Chromium local (`/usr/bin/chromium`, ou a variável `CHROMIUM_PATH`), um perfil temporário e controle CDP por pipe. Não acessa o portal. Usa somente uma fixture sanitizada da estrutura dos campos, com eventos simulados para as listas e calendário; não executa scripts do HTML enviado nem inclui parâmetros de identidade ou dados de alunos. No ambiente restrito, iniciar o Chromium pode precisar da permissão de execução correspondente.
+O último teste requer Chromium em `/usr/bin/chromium` ou `CHROMIUM_PATH`. Usa CDP por pipe e página sintética em memória, sem navegação externa nem scripts dos anexos. Pode requerer permissão de execução fora do sandbox. A interface gráfica Windows não é validada por esse teste Linux.
+
+Para compilar no Windows: instale `pyinstaller==6.11.1` além de `requirements-desktop.txt` e execute `python desktop/build_windows.py`. O workflow também executa `RegistroDeAulas.exe --self-test` para validar Tcl, recursos embarcados e Chrome em uma página local antes de disponibilizar o artefato.
