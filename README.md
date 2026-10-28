@@ -23,7 +23,7 @@ Na janela do programa, informe:
 - Usuário e senha do portal (somente no seu computador).
 - Nome completo da escola, turma e disciplina, como aparecem no portal.
 - Mês e ano no formato `AAAA-MM`.
-- Dias da semana e horários completos. Para várias aulas no mesmo dia, separe os horários por ponto e vírgula: `08:00 - 09:00; 10:00 - 11:00`.
+- Dias da semana e horários de início e fim. Aceita `9:20 - 10:20` e `09:20 - 10:20`. Para várias aulas no mesmo dia, separe os horários por ponto e vírgula: `8:00 - 9:00; 10:00 - 11:00`.
 - Dias sem aula no mês, por exemplo `7, 12, 21`.
 - Conteúdo e metodologia correspondentes às aulas efetivamente realizadas.
 

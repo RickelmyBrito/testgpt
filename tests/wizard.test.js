@@ -33,4 +33,6 @@ test('comprova o registro específico com situação pendente, sem confundir com
   assert.equal(c.FluxoAula.lessonResult(headers,[row,row],aula),'duplicado');
   assert.equal(c.FluxoAula.lessonResult(headers,[[...row.slice(0,4),'Aula confirmada']],aula),'confirmada');
   assert.equal(c.FluxoAula.lessonResult(headers,[[...row.slice(0,4),'Outra situação']],aula),'situação desconhecida');
+  const shortRow=['05/10/2026','9:20 às 10:20','Turma B','MATEMÁTICA','Aula aguardando confirmação'];
+  assert.equal(c.FluxoAula.lessonResult(headers,[shortRow],{...aula,horario:'09:20 - 10:20'}),'aguardando confirmação');
 });

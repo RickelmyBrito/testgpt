@@ -15,7 +15,11 @@ globalThis.FluxoAula = (() => {
     const h=headers.map(norm);
     const columns=['data da aula','horario (inicial ~ final)','turma','componente','situacao'].map(name=>h.indexOf(name));
     if(columns.some(index=>index<0))return null;
-    const time=value=>(String(value).match(/\d{2}:\d{2}/g)||[]).join('-');
+    const time=value=>{
+      const values=String(value).match(/\b\d{1,2}:\d{2}\b/g)||[];
+      if(values.length!==2 || values.some(v=>{const [h,m]=v.split(':').map(Number);return h>23 || m>59;}))return '';
+      return values.map(v=>v.padStart(5,'0')).join('-');
+    };
     const expectedTime=time(aula.horario);
     if(!/^\d{2}:\d{2}-\d{2}:\d{2}$/.test(expectedTime))return null;
     const expectedDate=aula.data.split('-').reverse().join('/');

@@ -2,7 +2,11 @@
 globalThis.PortalAulas = (() => {
   const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\(\s*\*\s*\)/g,'').replace(/\s+/g,' ').trim().toLowerCase();
   const visible=el=>Boolean(el?.isConnected && el.getClientRects().length);
-  const time=s=>(String(s).match(/\d{2}:\d{2}/g)||[]).join('-');
+  const time=s=>{
+    const values=String(s).match(/\b\d{1,2}:\d{2}\b/g)||[];
+    if(values.length!==2 || values.some(v=>{const [h,m]=v.split(':').map(Number);return h>23 || m>59;}))return '';
+    return values.map(v=>v.padStart(5,'0')).join('-');
+  };
   function field(name) {
     const found=new Set();
     for(const label of document.querySelectorAll('label')) {

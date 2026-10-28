@@ -39,16 +39,17 @@ def lessons(config):
             text = text.strip()
             if not text:
                 continue
-            times = re.findall(r'\b\d{2}:\d{2}\b', text)
-            if len(times) != 2:
-                raise ValueError('Use horários completos: 08:00 - 09:00.')
+            match = re.fullmatch(r'(\d{1,2}:\d{2})\s*(?:[-–—]|às|as|a)\s*(\d{1,2}:\d{2})', text, re.IGNORECASE)
+            if not match:
+                raise ValueError('Informe início e fim da aula, por exemplo: 9:20 - 10:20.')
+            times = match.groups()
             try:
                 start, end = (dt.datetime.strptime(t, '%H:%M').time() for t in times)
             except ValueError:
                 raise ValueError('Horário inválido: ' + text) from None
             if end <= start:
                 raise ValueError('O horário final deve ser posterior ao inicial.')
-            value = ' - '.join(times)
+            value = start.strftime('%H:%M') + ' - ' + end.strftime('%H:%M')
             if value not in values:
                 values.append(value)
         week[int(weekday)] = values

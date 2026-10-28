@@ -28,7 +28,7 @@ test('preenche controles personalizados em Chromium com a estrutura real sanitiz
     };
   }
   menu('Tipo de Aula',['Aula Normal','Reposição']);
-  menu('Horário (inicial ~ final)',['08:00 - 09:00','09:00 - 10:00']);
+  menu('Horário (inicial ~ final)',['9:20 - 10:20','10:20 - 11:20']);
   const dateButton=p.field('Data');
   const monthNames=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   function renderCalendar() {
@@ -55,7 +55,7 @@ test('preenche controles personalizados em Chromium com a estrutura real sanitiz
   globalThis.localizarConfirmacaoAula=()=>null;
   globalThis.confirmarEnvioAula=async()=> 'envio simulado';
   (async()=>{
-    const aula={data:'2026-10-05',horario:'08:00 às 09:00',turma:'Turma Exemplo',disciplina:'Matemática',conteudo:'Conteúdo de exemplo',metodologia:'Metodologia de exemplo'};
+    const aula={data:'2026-10-05',horario:'09:20 às 10:20',turma:'Turma Exemplo',disciplina:'Matemática',conteudo:'Conteúdo de exemplo',metodologia:'Metodologia de exemplo'};
     assert(p.field('Turma').disabled,'lê turma desabilitada');
     const wrong=await preencherAula({...aula,disciplina:'Física'});
     assert(wrong.includes('disciplina') && saves===0,'não envia na disciplina errada');outcomes.push('disciplina');
@@ -64,7 +64,7 @@ test('preenche controles personalizados em Chromium com a estrutura real sanitiz
     assert(saves===1,'somente um envio');
     assert(inputEvents===1,'evento de edição disparado');
     assert(p.value(p.field('Data'))==='05/10/2026','navegação entre meses e seleção da data');
-    assert(p.value(p.field('Horário (inicial ~ final)'))==='08:00 - 09:00','horário equivalente selecionado');
+    assert(p.value(p.field('Horário (inicial ~ final)'))==='9:20 - 10:20','horário equivalente selecionado mesmo sem zero inicial no portal');
     assert(p.value(p.field('Conteúdo abordado'))===aula.conteudo,'conteúdo preenchido');
     assert(p.field('Competência Específica').textContent.trim()==='Selecione','competências preservadas');
     outcomes.push('data','horário','textos','envio único','currículo preservado');

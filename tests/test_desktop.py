@@ -26,10 +26,23 @@ class PlanningTests(unittest.TestCase):
     def test_full_date_exclusion(self):
         self.assertEqual(len(lessons(config(excecoes='01/02/2028'))), 4)
 
+    def test_accepts_single_digit_hours_and_deduplicates_after_normalization(self):
+        result = lessons(config(semana={'2': '9:20 - 10:20; 09:20 - 10:20'}))
+        self.assertEqual(result, [
+            {'data': '2028-02-01', 'horario': '09:20 - 10:20'},
+            {'data': '2028-02-29', 'horario': '09:20 - 10:20'},
+        ])
+
+    def test_accepts_portal_time_separators(self):
+        for value in ('9:20 às 10:20', '9:20 – 10:20', '9:20 — 10:20'):
+            with self.subTest(value=value):
+                self.assertEqual(lessons(config(semana={'2': value}))[0]['horario'], '09:20 - 10:20')
+
     def test_invalid_dates_and_times_do_not_start_a_plan(self):
         for changes in ({'mes': '2028-13'}, {'excecoes': '30'}, {'excecoes': '01/03/2028'},
                         {'semana': {'2': '09:00 - 08:00'}}, {'semana': {'2': '08:99 - 09:00'}},
-                        {'semana': {}}, {'escola': ''}):
+                        {'semana': {'2': '9:60 - 10:20'}}, {'semana': {'2': '29:20 - 30:20'}},
+                        {'semana': {'2': 'texto 9:20 - 10:20'}}, {'semana': {}}, {'escola': ''}):
             with self.subTest(changes=changes), self.assertRaises(ValueError):
                 lessons(config(**changes))
 
