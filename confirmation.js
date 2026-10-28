@@ -24,7 +24,7 @@ globalThis.confirmarEnvioAula = async function (check=()=>{}) {
   while(Date.now()<deadline) {
     check();
     const button=globalThis.localizarConfirmacaoAula();
-    if(button){button.click();return 'Confirmação “Sim” enviada. O programa tentará avançar pelas etapas e finalizar, sem editar os campos. A gravação ainda não foi comprovada; aguarde o portal.';}
+    if(button){if(globalThis.PortalAulas)PortalAulas.press(button);else button.click();return 'Confirmação “Sim” enviada. O programa tentará avançar pelas etapas e finalizar, sem editar os campos. A gravação ainda não foi comprovada; aguarde o portal.';}
     await new Promise(resolve=>setTimeout(resolve,200));
   }
   return 'Salvar e Avançar acionado, mas a confirmação não foi observada nesta tela. Confira o andamento no portal antes de repetir.';

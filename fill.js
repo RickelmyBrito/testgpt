@@ -28,12 +28,12 @@ globalThis.preencherAula = async function (aula) {
     const date=p.value(p.field('Data')).trim();
     if(date!==aula.data && date!==aula.data.split('-').reverse().join('/'))throw Error('Data não confirmada no formulário.');
     if(p.time(p.value(p.field('Horário (inicial ~ final)')))!==p.time(aula.horario))throw Error('Horário não confirmado.');
-    const saves=[...document.querySelectorAll('button,input[type="submit"]')].filter(p.visible).filter(el=>!el.disabled && p.norm(el.textContent || el.value)==='salvar e avancar');
-    if(saves.length!==1 || typeof globalThis.confirmarEnvioAula!=='function')throw Error('Botão ou módulo de salvamento não identificado.');
+    const save=await p.seek(()=>p.findButton('Salvar e Avançar'),check);
+    if(typeof globalThis.confirmarEnvioAula!=='function')throw Error('Módulo de salvamento não identificado.');
     if(globalThis.localizarConfirmacaoAula())throw Error('Já existe uma confirmação aberta. Não será feito outro envio.');
     sessionStorage.removeItem('assistente-aulas-resultado');
     sessionStorage.setItem('assistente-aulas-fluxo',JSON.stringify({stage:'plano de aula',awaiting:null,expiry:Date.now()+45000,aula:{data:aula.data,horario:aula.horario,turma:aula.turma,disciplina:aula.disciplina}}));
-    saves[0].click();return await globalThis.confirmarEnvioAula(check);
+    p.press(save);return await globalThis.confirmarEnvioAula(check);
   } catch(error) {
     return 'Execução interrompida: '+error.message+' Confira os campos antes de repetir.';
   } finally {if(sessionStorage.getItem(busyKey)===token)sessionStorage.removeItem(busyKey);}

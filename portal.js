@@ -32,14 +32,63 @@ globalThis.PortalAulas = (() => {
     do{check();const result=get();if(result)return result;await new Promise(r=>setTimeout(r,60));}while(Date.now()<end);
     throw Error('O portal não disponibilizou o controle esperado.');
   }
+  function text(el) {
+    const copy=el.cloneNode(true);
+    copy.querySelectorAll('svg,i,[hidden],[aria-hidden="true"],.material-icons,.material-symbols-outlined').forEach(node=>node.remove());
+    return copy.textContent.replace(/\s+/g,' ').trim();
+  }
+  function reveal(el) {
+    if(!visible(el))throw Error('Controle indisponível para rolagem.');
+    el.scrollIntoView({block:'center',inline:'nearest',behavior:'instant'});
+  }
+  function findButton(name) {
+    const wanted=norm(name);
+    const found=[...document.querySelectorAll('button,a,[role="button"],input[type="submit"],input[type="button"]')].filter(visible)
+      .filter(el=>[text(el),el.value,el.getAttribute('aria-label')].some(label=>norm(label).replace(/^\+\s*/,'')===wanted));
+    if(found.length>1)throw Error('Mais de uma ação corresponde a '+name+'.');
+    return found.length===1 && !found[0].disabled && found[0].getAttribute('aria-disabled')!=='true'?found[0]:null;
+  }
+  function scrollPage(reset=false) {
+    const dialogs=[...document.querySelectorAll('[role="dialog"],[role="alertdialog"],[role="listbox"]')].filter(visible);
+    const scope=dialogs.at(-1) || document;
+    const root=scope===document?document.scrollingElement:scope;
+    const containers=[...new Set([root,...scope.querySelectorAll('main,section,div,ul')])].filter(el=>{
+      if(!el || !visible(el) || el.clientHeight<=0 || el.scrollHeight<=el.clientHeight+2)return false;
+      return el===root || /auto|scroll|overlay/.test(getComputedStyle(el).overflowY);
+    }).sort((a,b)=>a.contains(b)?1:b.contains(a)?-1:0);
+    if(reset) {
+      let moved=false;
+      for(const el of containers){if(el.scrollTop){el.scrollTo({top:0,behavior:'instant'});moved=true;}}
+      return moved;
+    }
+    for(const el of containers) {
+      if(el.scrollTop+el.clientHeight>=el.scrollHeight-2)continue;
+      const before=el.scrollTop;
+      el.scrollBy({top:Math.max(180,Math.floor(el.clientHeight*0.75)),behavior:'instant'});
+      if(el.scrollTop>before)return true;
+    }
+    return false;
+  }
+  async function seek(get,check=()=>{},timeout=15000) {
+    const end=Date.now()+timeout;
+    let started=false;
+    do {
+      check();const result=get();
+      if(result){const el=result.nodeType===1?result:result.table;if(el)reveal(el);return result;}
+      scrollPage(!started);started=true;await new Promise(resolve=>setTimeout(resolve,250));
+    } while(Date.now()<end);
+    throw Error('O controle esperado não foi encontrado após percorrer a tela.');
+  }
   function press(el) {
     if(!visible(el) || el.disabled || el.getAttribute('aria-disabled')==='true')throw Error('Controle indisponível.');
-    el.focus();
+    reveal(el);
+    el.focus({preventScroll:true});
     el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,button:0,pointerType:'mouse',isPrimary:true}));
     el.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,button:0,pointerType:'mouse',isPrimary:true}));
     el.click();
   }
   function setText(el,text) {
+    reveal(el);
     const proto=el.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:el.tagName==='SELECT'?HTMLSelectElement.prototype:HTMLInputElement.prototype;
     Object.getOwnPropertyDescriptor(proto,'value').set.call(el,text);
     el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}));
@@ -120,5 +169,5 @@ globalThis.PortalAulas = (() => {
     }
     throw Error('Data fora do limite de navegação do calendário.');
   }
-  return {norm,visible,time,field,value,assertIdentity,wait,press,setText,choose,chooseDate,monthIndex};
+  return {norm,visible,time,field,value,assertIdentity,wait,press,setText,choose,chooseDate,monthIndex,text,reveal,findButton,scrollPage,seek};
 })();

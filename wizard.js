@@ -42,7 +42,7 @@ if(typeof document!=='undefined' && !globalThis.assistenteWizardInstalled) {
     let busy=false;
     const visible=el=>el.getClientRects().length && !el.disabled && el.getAttribute('aria-disabled')!=='true';
     const status=message=>sessionStorage.setItem('assistente-aulas-status',message);
-    function tick() {
+    async function tick() {
       if(busy)return;
       busy=true;
       try {
@@ -72,17 +72,24 @@ if(typeof document!=='undefined' && !globalThis.assistenteWizardInstalled) {
         if(stage===state.stage) {
           sessionStorage.removeItem('assistente-aulas-preenchimento');
           const label=stage==='atividade'?'salvar e finalizar':'salvar e avancar';
-          const buttons=[...document.querySelectorAll('button,input[type="submit"]')].filter(visible)
+          let buttons=[...document.querySelectorAll('button,input[type="submit"]')].filter(visible)
             .filter(el=>FluxoAula.norm(el.textContent || el.value)===label);
+          if(globalThis.PortalAulas) {
+            const control=await PortalAulas.seek(()=>PortalAulas.findButton(label),()=>{
+              const active=JSON.parse(sessionStorage.getItem(key)||'null');
+              if(!active || active.stage!==state.stage)throw Error('Avanço interrompido.');
+            });
+            buttons=[control];
+          }
           if(buttons.length!==1 || globalThis.localizarConfirmacaoAula())return;
           state.awaiting=stage;state.stage=FluxoAula.next(stage);state.expiry=Date.now()+45000;
           sessionStorage.setItem(key,JSON.stringify(state));
           status(stage==='atividade'?'Finalização enviada; aguardando comprovação no portal.':'Avançando: '+stage+'.');
-          buttons[0].click();return;
+          if(globalThis.PortalAulas)PortalAulas.press(buttons[0]);else buttons[0].click();return;
         }
         if(state.awaiting) {
           const button=globalThis.localizarConfirmacaoAula();
-          if(button) {state.awaiting=null;sessionStorage.setItem(key,JSON.stringify(state));button.click();}
+          if(button) {state.awaiting=null;sessionStorage.setItem(key,JSON.stringify(state));if(globalThis.PortalAulas)PortalAulas.press(button);else button.click();}
         }
       } catch {
         sessionStorage.removeItem(key);status('Fluxo interrompido por erro. Confira o registro no portal antes de repetir.');

@@ -101,7 +101,7 @@ test('preenche controles personalizados em Chromium com a estrutura real sanitiz
     list([existing,created],3);
     LoteAulas.start(aula,[{data:'2026-10-19',horario:'08:00 - 09:00'}]);
     for(let i=0;i<100 && sessionStorage.getItem('assistente-aulas-lote');i++){await LoteAulas.run();await new Promise(r=>setTimeout(r,20));}
-    assert((sessionStorage.getItem('assistente-aulas-status')||'').includes('parcial'),'recusa lista parcial');assert(adds===1,'lista parcial não inicia nova aula');outcomes.push('consulta parcial bloqueada');
+    assert((sessionStorage.getItem('assistente-aulas-status')||'').includes('Consulta incompleta'),'recusa lista parcial');assert(adds===1,'lista parcial não inicia nova aula');outcomes.push('consulta parcial bloqueada');
     function pages(index) {
       list([index===0?existing:created],2);
       const main=document.querySelector('main');

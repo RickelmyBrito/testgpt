@@ -90,6 +90,16 @@ def locate_card_action(frame, title, action, discipline=None, *, scroll=False, s
     raise AutomationError('A busca da turma atingiu o limite de rolagem. Nenhuma aula foi criada.')
 
 
+def registration_ready(frame):
+    return frame.evaluate('''() => {
+      if(!globalThis.LoteAulas || !globalThis.PortalAulas)return false;
+      const text=PortalAulas.norm(document.body?.innerText);
+      const found=LoteAulas.tableSnapshot() || [...document.querySelectorAll('label')].some(el=>PortalAulas.norm(el.textContent)==='conteudo abordado') || (text.includes('aulas confirmadas') && text.includes('aulas aguardando confirmacao'));
+      if(!found)PortalAulas.scrollPage();
+      return Boolean(found);
+    }''')
+
+
 def register_month(config, username, password, stop: threading.Event, log):
     """Own one ephemeral Chrome session. No credentials, cookies, traces or HAR saved."""
     planned = lessons(config)
@@ -112,7 +122,7 @@ def register_month(config, username, password, stop: threading.Event, log):
         try:
             log('Versão do programa: ' + APP_VERSION)
             log('Abrindo o Chrome do programa…')
-            browser = playwright.chromium.launch(channel='chrome', headless=False)
+            browser = playwright.chromium.launch(channel='chrome', headless=False, args=['--start-maximized'])
             context = browser.new_context(no_viewport=True)
             source = bundle()
             context.add_init_script(script=source)
@@ -144,6 +154,7 @@ def register_month(config, username, password, stop: threading.Event, log):
             profile_seen = None
             seen_hosts = set()
             registration = None
+            registration_announced = False
             while time.monotonic() < deadline:
                 if stop.is_set():
                     raise AutomationError('Execução interrompida.')
@@ -161,7 +172,10 @@ def register_month(config, username, password, stop: threading.Event, log):
                             continue
                         parsed = urlsplit(frame.url)
                         if parsed.hostname == 'seduc-academico-prod.seduc.pi.gov.br' and parsed.path.startswith('/registro-aulas/'):
-                            ready = frame.evaluate('''() => Boolean(globalThis.LoteAulas && (LoteAulas.tableSnapshot() || [...document.querySelectorAll('label')].some(el=>PortalAulas.norm(el.textContent)==='conteudo abordado')))''')
+                            if not registration_announced:
+                                registration_announced = True
+                                log('Registro da turma aberto. Localizando a lista de aulas e os controles…')
+                            ready = registration_ready(frame)
                             if ready and {'escola', 'turma'}.issubset(clicked):
                                 registration = frame
                                 break
