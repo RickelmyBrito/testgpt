@@ -41,6 +41,55 @@ def navigation_source():
     return '() => {\n' + source + '\nreturn true;\n}'
 
 
+def locate_card_action(frame, title, action, discipline=None, *, scroll=False, stop=None, log=lambda text: None):
+    """Find a unique card, scrolling both ordinary and lazy-loaded class lists."""
+    config = {'title': title, 'action': action, 'discipline': discipline}
+    bottom_since = None
+    previous_extent = None
+    announced = False
+    for attempt in range(85 if scroll else 1):
+        if stop is not None and stop.is_set():
+            raise AutomationError('Execução interrompida.')
+        count = frame.evaluate('(c) => desktopActionCandidates(c).length', config)
+        if count > 1:
+            raise AutomationError('Mais de um cartão corresponde à turma e disciplina. Nenhum foi aberto.')
+        handle = frame.evaluate_handle('(c) => desktopAction(c)', config)
+        element = handle.as_element()
+        if element:
+            try:
+                element.scroll_into_view_if_needed(timeout=5000)
+                return element
+            except Exception:
+                handle.dispose()
+                raise
+        handle.dispose()
+        if not scroll:
+            return None
+        # Make the iframe visible so lazy loading can observe its viewport.
+        if frame.parent_frame is not None:
+            iframe = frame.frame_element()
+            try:
+                iframe.scroll_into_view_if_needed(timeout=5000)
+            finally:
+                iframe.dispose()
+        progress = frame.evaluate('() => desktopScrollClasses()')
+        if not progress.get('screen'):
+            return None
+        if not announced:
+            log('Procurando a turma e a disciplina; percorrendo a lista automaticamente…')
+            announced = True
+        extent = progress.get('extent')
+        if progress.get('moved') or extent != previous_extent:
+            bottom_since = None
+        elif bottom_since is None:
+            bottom_since = time.monotonic()
+        elif time.monotonic() - bottom_since >= 3:
+            raise AutomationError('A lista foi percorrida, mas a turma e a disciplina informadas não foram encontradas. Confira os nomes completos no programa. Nenhuma aula foi criada.')
+        previous_extent = extent
+        frame.page.wait_for_timeout(300)
+    raise AutomationError('A busca da turma atingiu o limite de rolagem. Nenhuma aula foi criada.')
+
+
 def register_month(config, username, password, stop: threading.Event, log):
     """Own one ephemeral Chrome session. No credentials, cookies, traces or HAR saved."""
     planned = lessons(config)
@@ -156,11 +205,15 @@ def register_month(config, username, password, stop: threading.Event, log):
                                 continue
                             if name == 'turma' and 'escola' not in clicked:
                                 continue
-                            handle = frame.evaluate_handle('(c)=>desktopAction(c)', {'title': title, 'action': action, 'discipline': subject})
-                            element = handle.as_element()
+                            element = locate_card_action(frame, title, action, subject, scroll=name == 'turma', stop=stop, log=log)
                             if element:
-                                element.click(); clicked.add(name); log('Escola aberta.' if name == 'escola' else 'Turma e disciplina selecionadas.'); break
-                            handle.dispose()
+                                try:
+                                    element.click()
+                                    clicked.add(name)
+                                    log('Escola aberta.' if name == 'escola' else 'Turma e disciplina selecionadas.')
+                                finally:
+                                    element.dispose()
+                                break
                     except BrowserError as error:
                         if page.is_closed():
                             raise AutomationError('A janela do Chrome foi fechada antes de abrir a turma.') from None

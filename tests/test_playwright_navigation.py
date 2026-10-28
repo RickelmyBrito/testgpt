@@ -2,9 +2,10 @@
 import html
 import os
 import sys
+import threading
 import unittest
 
-from desktop.engine import navigation_source
+from desktop.engine import AutomationError, locate_card_action, navigation_source
 
 try:
     from playwright.sync_api import sync_playwright
@@ -90,6 +91,61 @@ class PlaywrightNavigationTests(unittest.TestCase):
         profile.click()
         frame.wait_for_function('() => !desktopProfileScreen()')
         self.assertEqual(frame.locator('h2').inner_text(), 'Lista de Escolas')
+
+    def test_class_below_viewport_with_div_click_handler(self):
+        self.page.set_viewport_size({'width': 800, 'height': 500})
+        self.page.set_content('''<h2>Lista de turmas</h2><div style="height:1800px"></div>
+          <section><h3>Turma B</h3><p>Matemática</p><div id="row"><span>Registro de aulas</span></div></section>''')
+        self.install(self.page.main_frame)
+        self.page.evaluate("() => document.querySelector('#row').onclick=e=>window.opened=e.isTrusted")
+        self.assertGreater(self.page.locator('#row').bounding_box()['y'], 500)
+        action = locate_card_action(self.page.main_frame, 'Turma B', 'Registro de aulas', 'Matemática', scroll=True)
+        self.assertIsNotNone(action)
+        action.click()
+        self.assertIs(self.page.evaluate('() => window.opened'), True)
+        self.assertGreater(self.page.evaluate('() => scrollY'), 0)
+
+    def test_lazy_class_loaded_by_scrolling_inside_offscreen_iframe(self):
+        markup = '''<h2>Lista de turmas</h2><div id="panel" style="height:180px;overflow-y:auto">
+          <section><h3>Turma A</h3><p>Física</p><a>Registro de aulas</a></section>
+          <div style="height:1100px"></div></div>'''
+        self.page.set_viewport_size({'width': 800, 'height': 500})
+        self.page.set_content('<div style="height:1200px"></div><iframe style="height:300px;width:600px" srcdoc="' + html.escape(markup, quote=True) + '"></iframe>')
+        frame = self.page.frames[1]
+        self.install(frame)
+        frame.evaluate('''() => {
+          const panel=document.querySelector('#panel');let requested=false;
+          panel.onscroll=()=>{
+            if(requested || panel.scrollTop+panel.clientHeight<panel.scrollHeight-30)return;
+            requested=true;
+            setTimeout(()=>{
+              panel.insertAdjacentHTML('beforeend','<section><h3>Turma B</h3><p>Matemática</p><div id="target"><span>Registro de aulas</span></div></section>');
+              document.querySelector('#target').onclick=e=>window.opened=e.isTrusted;
+            },150);
+          };
+        }''')
+        self.assertIsNone(frame.evaluate_handle('(c)=>desktopAction(c)', {'title': 'Turma B', 'action': 'Registro de aulas', 'discipline': 'Matemática'}).as_element())
+        logs = []
+        action = locate_card_action(frame, 'Turma B', 'Registro de aulas', 'Matemática', scroll=True, log=logs.append)
+        self.assertIsNotNone(action)
+        action.click()
+        self.assertIs(frame.evaluate('() => window.opened'), True)
+        self.assertGreater(frame.evaluate("() => document.querySelector('#panel').scrollTop"), 0)
+        self.assertGreater(self.page.evaluate('() => scrollY'), 0)
+        self.assertTrue(logs)
+
+    def test_missing_class_stops_at_bottom_without_opening_another(self):
+        self.page.set_content('<h2>Lista de turmas</h2><section><h3>Turma A</h3><p>Matemática</p><button onclick="window.wrong=true">Registro de aulas</button></section>')
+        self.install(self.page.main_frame)
+        with self.assertRaisesRegex(AutomationError, 'não foram encontradas'):
+            locate_card_action(self.page.main_frame, 'Turma B', 'Registro de aulas', 'Matemática', scroll=True)
+        self.assertIsNone(self.page.evaluate('() => window.wrong'))
+
+    def test_cancel_class_search_before_scrolling(self):
+        stop = threading.Event()
+        stop.set()
+        with self.assertRaisesRegex(AutomationError, 'interrompida'):
+            locate_card_action(self.page.main_frame, 'Turma B', 'Registro de aulas', 'Matemática', scroll=True, stop=stop)
 
 
 if __name__ == '__main__':

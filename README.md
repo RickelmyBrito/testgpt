@@ -2,7 +2,7 @@
 
 Programa com janela própria que abre o Google Chrome, faz login no portal da SEDUC-PI e tenta registrar as aulas do mês automaticamente. **Não requer extensão do Chrome.**
 
-A versão atual aparece no título da janela: **3.1.1**. Após atualizar o ZIP, abra `Abrir Programa.cmd` da nova pasta; um executável ou atalho antigo não é atualizado pela extração do código-fonte.
+A versão atual aparece no título da janela: **3.1.2**. Após atualizar o ZIP, abra `Abrir Programa.cmd` da nova pasta; um executável ou atalho antigo não é atualizado pela extração do código-fonte.
 
 ## Abrir no Windows
 
@@ -30,6 +30,8 @@ Na janela do programa, informe:
 - Conteúdo e metodologia correspondentes às aulas efetivamente realizadas.
 
 Clique em **Entrar e registrar mês**. O programa abre uma janela separada do Chrome, envia o login, seleciona Professor(a), procura a escola e o cartão da turma/disciplina e inicia o lote. Se aparecer CAPTCHA ou código de verificação, conclua essa etapa no Chrome; o programa não contorna essas verificações.
+
+A procura da turma percorre a página e painéis internos com rolagem, incluindo listas dentro de iframe e cartões carregados durante a rolagem. Ao encontrar um cartão único, traz a ação Registro de aulas para a área visível antes de clicar, mesmo quando ela é um texto dentro de um cartão clicável. Se chegar ao fim sem localizar a combinação exata de turma e disciplina, informa o motivo e interrompe sem abrir outra turma.
 
 O lote consulta a lista existente e a paginação reconhecida, exige totais completos e pula aulas já registradas. Para cada aula restante, tenta selecionar Aula Normal, data e horário, preencher os textos, confirmar o envio, avançar por Plano de aula, Frequência e Recursos didáticos e finalizar em Atividade. Aguarda localizar na lista o registro correspondente antes de iniciar outro.
 
