@@ -81,6 +81,8 @@ def register_month(config, username, password, stop: threading.Event, log):
             stage = 'perfil, escola e turma'
             deadline = time.monotonic() + 180
             clicked = set()
+            profile_attempts = 0
+            profile_seen = None
             registration = None
             while time.monotonic() < deadline:
                 if stop.is_set():
@@ -100,11 +102,35 @@ def register_month(config, username, password, stop: threading.Event, log):
                                 registration = frame
                                 break
                         frame.evaluate((ROOT / 'desktop' / 'navigation.js').read_text(encoding='utf-8'))
-                        body = frame.locator('body').inner_text(timeout=5000)
-                        if 'Escolha seu perfil de acesso' in body and 'perfil' not in clicked:
-                            profile = frame.get_by_text('Professor(a)', exact=True).filter(visible=True)
-                            if profile.count() == 1:
-                                profile.click(); clicked.add('perfil'); log('Perfil Professor(a) selecionado.'); break
+                        if frame.evaluate('() => desktopProfileScreen()'):
+                            if profile_seen is None:
+                                profile_seen = time.monotonic()
+                                log('Tela de perfis identificada. Selecionando Professor(a)…')
+                            candidates = frame.evaluate('() => desktopProfileCandidates().length')
+                            if candidates > 1:
+                                raise AutomationError('Há mais de uma opção Professor(a). Nenhum perfil foi escolhido para evitar abrir o acesso errado.')
+                            handle = frame.evaluate_handle('() => desktopProfileAction()')
+                            element = handle.as_element()
+                            if not element:
+                                handle.dispose()
+                                if time.monotonic() - profile_seen > 20:
+                                    raise AutomationError('A tela de perfis foi encontrada, mas o botão Professor(a) não foi reconhecido. Nenhuma aula foi criada.')
+                                continue
+                            if profile_attempts >= 3:
+                                raise AutomationError('O portal não avançou após selecionar Professor(a). Nenhuma aula foi criada.')
+                            profile_attempts += 1
+                            try:
+                                if element.evaluate('(el) => el.tagName') == 'SELECT':
+                                    value = element.evaluate('(el) => [...el.options].find(option => !option.disabled && desktopProfileLabel(option.textContent)).value')
+                                    element.select_option(value=value)
+                                else:
+                                    element.click(timeout=5000)
+                                frame.wait_for_function('() => typeof desktopProfileScreen === "function" && !desktopProfileScreen()', timeout=6000)
+                                clicked.add('perfil')
+                                log('Perfil Professor(a) selecionado. Procurando a escola…')
+                            finally:
+                                handle.dispose()
+                            break
                         for name, title, action, subject in (
                             ('escola', config['escola'], 'Abrir', None),
                             ('turma', config['turma'], 'Registro de aulas', config['disciplina']),
