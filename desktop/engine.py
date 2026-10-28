@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from desktop import APP_VERSION
 from desktop.planning import lessons
 
 ORIGINS = {'https://portal.seduc.pi.gov.br', 'https://seduc-academico-prod.seduc.pi.gov.br'}
@@ -52,6 +53,7 @@ def register_month(config, username, password, stop: threading.Event, log):
                     break
     with sync_playwright() as playwright:
         try:
+            log('Versão do programa: ' + APP_VERSION)
             log('Abrindo o Chrome do programa…')
             browser = playwright.chromium.launch(channel='chrome', headless=False)
             context = browser.new_context(no_viewport=True)
@@ -83,6 +85,7 @@ def register_month(config, username, password, stop: threading.Event, log):
             clicked = set()
             profile_attempts = 0
             profile_seen = None
+            seen_hosts = set()
             registration = None
             while time.monotonic() < deadline:
                 if stop.is_set():
@@ -91,6 +94,10 @@ def register_month(config, username, password, stop: threading.Event, log):
                 official_pages = [item for item in context.pages if not item.is_closed() and official(item.main_frame)]
                 if official_pages:
                     page = official_pages[-1]
+                host = urlsplit(page.url).hostname
+                if host and host not in seen_hosts:
+                    seen_hosts.add(host)
+                    log('Página de acesso no domínio: ' + host)
                 for frame in page.frames:
                     try:
                         if frame.is_detached() or not official(frame):
@@ -109,6 +116,8 @@ def register_month(config, username, password, stop: threading.Event, log):
                             candidates = frame.evaluate('() => desktopProfileCandidates().length')
                             if candidates > 1:
                                 raise AutomationError('Há mais de uma opção Professor(a). Nenhum perfil foi escolhido para evitar abrir o acesso errado.')
+                            if candidates == 0 and time.monotonic() - profile_seen < 1:
+                                log('Aguardando o controle de seleção do perfil carregar…')
                             handle = frame.evaluate_handle('() => desktopProfileAction()')
                             element = handle.as_element()
                             if not element:
@@ -121,7 +130,7 @@ def register_month(config, username, password, stop: threading.Event, log):
                             profile_attempts += 1
                             try:
                                 if element.evaluate('(el) => el.tagName') == 'SELECT':
-                                    value = element.evaluate('(el) => [...el.options].find(option => !option.disabled && desktopProfileLabel(option.textContent)).value')
+                                    value = element.evaluate('(el) => [...el.options].find(option => !option.disabled && desktopProfileLabel(desktopText(option))).value')
                                     element.select_option(value=value)
                                 else:
                                     element.click(timeout=5000)
@@ -144,10 +153,13 @@ def register_month(config, username, password, stop: threading.Event, log):
                             if element:
                                 element.click(); clicked.add(name); log('Escola aberta.' if name == 'escola' else 'Turma e disciplina selecionadas.'); break
                             handle.dispose()
-                    except BrowserError:
+                    except BrowserError as error:
                         if page.is_closed():
                             raise AutomationError('A janela do Chrome foi fechada antes de abrir a turma.') from None
-                        # Navigation may destroy a frame's context between two reads.
+                        transient = ('execution context was destroyed', 'cannot find context', 'frame was detached', 'frame has been detached', 'most likely because of a navigation')
+                        if type(error).__name__ != 'TimeoutError' and not any(marker in str(error).lower() for marker in transient):
+                            raise AutomationError('Não foi possível executar a leitura da tela de acesso. Atualize o programa e informe a última mensagem exibida. Tipo: ' + type(error).__name__) from None
+                        # Retry only transient navigation/loading failures, not hidden script errors.
                         continue
                 if registration:
                     break

@@ -1,4 +1,9 @@
 /* Find a unique action in the card identified by exact school/class/subject text. */
+globalThis.desktopText = function (element) {
+  const copy=element.cloneNode(true);
+  copy.querySelectorAll('svg,i,[hidden],[aria-hidden="true"],.material-icons,.material-icons-outlined,.material-symbols-outlined').forEach(icon=>icon.remove());
+  return copy.textContent.replace(/\s+/g,' ').trim();
+};
 globalThis.desktopProfileLabel = function (text) {
   return /^professor(?:a|\s*\(\s*a\s*\)|\/a)?$/i.test(String(text||'').replace(/\s+/g,' ').trim());
 };
@@ -10,10 +15,10 @@ globalThis.desktopProfileCandidates = function () {
   const visible=el=>el.getClientRects().length && !el.disabled && el.getAttribute('aria-disabled')!=='true';
   const result=new Set();
   for(const select of document.querySelectorAll('select')) {
-    if(visible(select) && [...select.options].filter(option=>!option.disabled && desktopProfileLabel(option.textContent)).length===1)result.add(select);
+    if(visible(select) && [...select.options].filter(option=>!option.disabled && desktopProfileLabel(desktopText(option))).length===1)result.add(select);
   }
   for(const label of document.querySelectorAll('a,button,span,div,p,li,label')) {
-    if(!visible(label) || !desktopProfileLabel(label.textContent))continue;
+    if(!visible(label) || !desktopProfileLabel(desktopText(label)))continue;
     const ancestor=label.closest('a,button,[role="button"],[ng-click],[data-ng-click],[onclick]');
     if(ancestor && visible(ancestor)){result.add(ancestor);continue;}
     let parent=label.parentElement;
@@ -36,12 +41,12 @@ globalThis.desktopAction = function ({title, action, discipline}) {
   const visible=el=>el.getClientRects().length && !el.disabled && el.getAttribute('aria-disabled')!=='true';
   const nodes=[...document.querySelectorAll('h1,h2,h3,h4,h5,p,span,div,a,button')].filter(visible);
   const result=new Set();
-  for(const heading of nodes.filter(el=>norm(el.textContent)===norm(title))) {
+  for(const heading of nodes.filter(el=>norm(desktopText(el))===norm(title))) {
     let parent=heading;
     for(let depth=0;parent && depth<10;depth++,parent=parent.parentElement) {
       if(['BODY','HTML'].includes(parent.tagName))break;
-      if(discipline && ![...parent.querySelectorAll('p,span,div,h1,h2,h3,h4,h5')].some(el=>norm(el.textContent)===norm(discipline)))continue;
-      const actions=[...parent.querySelectorAll('a,button,[role="button"]')].filter(visible).filter(el=>norm(el.textContent)===norm(action));
+      if(discipline && ![...parent.querySelectorAll('p,span,div,h1,h2,h3,h4,h5')].some(el=>norm(desktopText(el))===norm(discipline)))continue;
+      const actions=[...parent.querySelectorAll('a,button,[role="button"]')].filter(visible).filter(el=>norm(desktopText(el))===norm(action));
       if(actions.length===1){result.add(actions[0]);break;}
       if(actions.length>1)break;
     }

@@ -2,6 +2,8 @@
 
 Programa com janela própria que abre o Google Chrome, faz login no portal da SEDUC-PI e tenta registrar as aulas do mês automaticamente. **Não requer extensão do Chrome.**
 
+A versão atual aparece no título da janela: **3.1.0**. Após atualizar o ZIP, abra `Abrir Programa.cmd` da nova pasta; um executável ou atalho antigo não é atualizado pela extração do código-fonte.
+
 ## Abrir no Windows
 
 ### Executável

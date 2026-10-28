@@ -4,6 +4,7 @@ import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
 
+from desktop import APP_VERSION
 from desktop.engine import AutomationError, register_month
 from desktop.planning import CONTENT, METHOD, lessons
 
@@ -14,7 +15,7 @@ class App:
         self.stop = threading.Event()
         self.events = queue.Queue()
         self.worker = None
-        root.title('Registro de Aulas — SEDUC-PI')
+        root.title('Registro de Aulas — SEDUC-PI — ' + APP_VERSION)
         root.geometry('760x' + str(min(850, max(500, root.winfo_screenheight() - 100))))
         root.minsize(640, 500)
         root.protocol('WM_DELETE_WINDOW', self.close)
