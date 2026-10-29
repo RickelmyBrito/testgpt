@@ -33,7 +33,7 @@ def main():
     ttk.Entry(area,textvariable=values['pdf']).grid(row=4,column=1,sticky='ew')
     ttk.Label(area,text='Dias sem aula (DD/MM/AAAA, separados por vírgula)').grid(row=5,column=0,columnspan=2,sticky='w')
     ttk.Entry(area,textvariable=values['excluded']).grid(row=6,column=0,columnspan=2,sticky='ew')
-    ttk.Label(area,text='Encontros: quarta e quinta. As datas vêm do PDF. Login gov.br feito no Chrome.').grid(row=7,column=0,columnspan=2,sticky='w',pady=8)
+    ttk.Label(area,text='Encontros: quarta e quinta. As datas vêm do PDF. Faça o login na janela do Chrome aberta pelo programa.').grid(row=7,column=0,columnspan=2,sticky='w',pady=8)
     buttons=ttk.Frame(area)
     buttons.grid(row=8,column=0,columnspan=2,sticky='ew')
     pane=ttk.Panedwindow(area,orient='vertical')
@@ -91,7 +91,7 @@ def main():
             messagebox.showerror('Importação do PDF',str(e))
     def start():
         if current['thread'] and current['thread'].is_alive():
-            messagebox.showinfo('Programa em execução','Pare e feche o Chrome antes de iniciar outro lote.')
+            messagebox.showinfo('Programa em execução','Pare e feche a sessão do programa antes de iniciar outro lote.')
             return
         try:
             cfg=load()
@@ -120,15 +120,24 @@ def main():
                         writer.writerow([e.day.strftime('%d/%m/%Y'),e.content,e.subcontent])
         except Exception as e:
             messagebox.showerror('Exportar',str(e))
-    for label,cmd in [('Ler PDF',prepare),('Exportar CSV',export),('Iniciar',start),('Continuar após login',resume.set),('Parar e fechar Chrome',stop.set)]:
-        ttk.Button(buttons,text=label,command=cmd).pack(side='left',padx=2)
+    for index,(label,cmd) in enumerate([('Ler PDF',prepare),('Exportar CSV',export),('Iniciar',start),('Continuar após login',resume.set),('Parar e fechar sessão',stop.set)]):
+        ttk.Button(buttons,text=label,command=cmd).grid(row=index//3,column=index%3,sticky='ew',padx=2,pady=2)
+    for index in range(3):
+        buttons.columnconfigure(index,weight=1)
     def poll():
         while not messages.empty():
             append(messages.get_nowait())
         root.after(200,poll)
     def close():
         stop.set()
-        root.destroy()
+        root.withdraw()
+        def finish():
+            worker = current['thread']
+            if worker and worker.is_alive():
+                root.after(100,finish)
+            else:
+                root.destroy()
+        finish()
     root.protocol('WM_DELETE_WINDOW',close)
     poll()
     root.mainloop()

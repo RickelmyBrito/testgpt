@@ -1,2 +1,2 @@
 """Programa independente para o Plano de Ensino da SEDUC-CE."""
-VERSION = '1.0.0'
+VERSION = '1.1.0'

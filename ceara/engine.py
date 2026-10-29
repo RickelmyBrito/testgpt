@@ -104,60 +104,83 @@ class Engine:
         if not page.get_by_text('Plano de Ensino', exact=True).count():
             raise ValueError('A busca não retornou a lista de planos.')
 
+    def teaching_plan(self, page):
+        """Continue from an authenticated portal tab, including an already-open plan."""
+        if not self.official(page):
+            raise ValueError('Volte ao Professor Online após concluir o login.')
+        if not page.get_by_text(re.compile(r'^Buscar plano de ensino$', re.I)).count():
+            self.click(page, 'Diário Online')
+            self.click(page, 'Plano de ensino')
+        self.search(page)
+        for i, entry in enumerate(self.entries, 1):
+            self.check()
+            if self.contains(page, entry):
+                self.log(f'{i}/{len(self.entries)}: {entry.day:%d/%m} já cadastrado; pulado.')
+                continue
+            self.click(page, 'Adicionar')
+            self.select(page, 'Período', lambda s:bool(re.fullmatch(str(self.config['period'])+r'[º°]?\s*(?:PERIODO|BIMESTRE)',s)))
+            self.fill(page, 'Conteúdo', entry.content)
+            self.fill(page, 'Subconteúdo', entry.subcontent)
+            self.click(page, 'Adicionar')
+            deadline = time.monotonic()+20
+            found = False
+            while time.monotonic()<deadline:
+                self.check()
+                if self.contains(page, entry):
+                    found = True
+                    break
+                page.wait_for_timeout(300)
+            if not found:
+                raise ValueError('Não confirmei o último cadastro na lista. Não vou reenviar; confira o portal antes de reiniciar.')
+            self.log(f'{i}/{len(self.entries)}: {entry.day:%d/%m} salvo e conferido.')
+        self.log('Plano concluído. O Chrome ficará aberto para consulta.')
+
+    def authenticated_page(self, browser):
+        pages = [page for context in browser.contexts for page in context.pages if self.official(page)]
+        ready = [page for page in pages if
+                 page.get_by_text(re.compile(r'^Diário Online$', re.I)).count() or
+                 page.get_by_text(re.compile(r'^Buscar plano de ensino$', re.I)).count()]
+        if len(ready) > 1:
+            raise ValueError('Há mais de uma aba do portal aberta. Deixe apenas uma para continuar.')
+        return ready[0] if ready else None
+
     def run(self):
         from playwright.sync_api import sync_playwright
-        with sync_playwright() as p:
-            browser = p.chromium.launch(channel='chrome', headless=False, args=['--start-maximized'])
-            context = browser.new_context(no_viewport=True)
-            page = context.new_page()
-            try:
-                page.goto(PORTAL, wait_until='domcontentloaded')
-                self.click(page, 'ACESSAR')
-                # gov.br authentication stays entirely in the user's browser.
-                options = [x for x in page.get_by_role('link').all() + page.get_by_role('button').all()
-                           if x.is_visible() and 'gov.br' in x.inner_text().lower()]
-                if len(options)==1:
-                    options[0].scroll_into_view_if_needed()
-                    options[0].click()
-                self.resume.clear()
-                self.log('Conclua o login gov.br no Chrome, incluindo CAPTCHA/código. Depois clique em Continuar no programa.')
-                while not self.resume.wait(.25):
-                    self.check()
-                pages = [x for x in context.pages if self.official(x)]
-                if not pages:
-                    raise ValueError('Conclua o login até voltar ao Professor Online.')
-                page = pages[-1]
-                self.click(page, 'Diário Online')
-                self.click(page, 'Plano de ensino')
-                self.search(page)
-                for i, entry in enumerate(self.entries, 1):
-                    self.check()
-                    if self.contains(page, entry):
-                        self.log(f'{i}/{len(self.entries)}: {entry.day:%d/%m} já cadastrado; pulado.')
-                        continue
-                    self.click(page, 'Adicionar')
-                    self.select(page, 'Período', lambda s:bool(re.fullmatch(str(self.config['period'])+r'[º°]?\s*(?:PERIODO|BIMESTRE)',s)))
-                    self.fill(page, 'Conteúdo', entry.content)
-                    self.fill(page, 'Subconteúdo', entry.subcontent)
-                    self.click(page, 'Adicionar')
-                    deadline = time.monotonic()+20
-                    found = False
-                    while time.monotonic()<deadline:
+        from .browser import ManualChrome
+        chrome = ManualChrome()
+        browser = None
+        try:
+            self.check()
+            chrome.open(PORTAL)
+            self.resume.clear()
+            self.log('Chrome aberto para login manual. Clique em ACESSAR e entre com gov.br. Quando voltar ao Professor Online, clique em Continuar após login no programa.')
+            # No Playwright browser connection or page scripts run during initial login.
+            with sync_playwright() as p:
+                page = None
+                while page is None:
+                    while not self.resume.wait(.25):
                         self.check()
-                        if self.contains(page, entry):
-                            found = True
-                            break
-                        page.wait_for_timeout(300)
-                    if not found:
-                        raise ValueError('Não confirmei o último cadastro na lista. Não vou reenviar; confira o portal antes de reiniciar.')
-                    self.log(f'{i}/{len(self.entries)}: {entry.day:%d/%m} salvo e conferido.')
-                self.log('Plano concluído. O Chrome ficará aberto para consulta.')
-            except Stopped:
-                self.log('Interrompido. Cadastros já enviados permanecem no portal.')
-            except Exception as e:
-                # Playwright errors can expose page data; only our deliberate messages are shown.
-                self.log(str(e) if isinstance(e, ValueError) else 'O portal mudou ou demorou a responder. Lote interrompido; confira o último item antes de reiniciar.')
-            finally:
-                while not self.stop.wait(.3) and browser.is_connected() and context.pages:
+                        if not chrome.running():
+                            raise ValueError('O Chrome foi fechado. Inicie uma nova sessão.')
+                    self.check()
+                    self.resume.clear()
+                    if browser is None:
+                        endpoint = chrome.endpoint(self.stop)
+                        self.check()
+                        browser = p.chromium.connect_over_cdp(endpoint, timeout=15000)
+                    page = self.authenticated_page(browser)
+                    if page is None:
+                        self.log('Login ainda não concluído. Volte ao Professor Online e clique novamente em Continuar após login.')
+                self.log('Sessão do Professor Online conectada. Iniciando o plano de ensino.')
+                self.teaching_plan(page)
+                while not self.stop.wait(.25) and chrome.running():
                     pass
-                browser.close()
+        except Stopped:
+            self.log('Interrompido. Cadastros já enviados permanecem no portal.')
+        except Exception as e:
+            self.log(str(e) if isinstance(e, ValueError) else 'Não consegui continuar nesta tela. Lote interrompido; confira o último item antes de reiniciar.')
+            self.log('O Chrome ficará aberto para conferência. Use Parar e fechar sessão do programa para encerrar.')
+            while not self.stop.wait(.25) and chrome.running():
+                pass
+        finally:
+            chrome.close()
